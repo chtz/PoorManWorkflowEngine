@@ -196,9 +196,15 @@ definition = Workflow.define do
               }
       
   state_node  :state,
-              :default_transition => :end
+              :default_transition => :end,
+              :action => lambda { |token|
+                puts "state action: #{token.variables[:command]}"
+              }
               
-  end_node    :end
+  end_node    :end,
+              :action => lambda { |token|
+                puts "end action: #{token.variables[:command]}"
+              }
 end
 
 instance = definition.create
@@ -207,4 +213,5 @@ instance.token.variables[:command] = :cmd_b
 while not instance.done?
   puts "send signal"  
   instance.token.signal
+  instance.token.variables[:command] = :foo
 end
