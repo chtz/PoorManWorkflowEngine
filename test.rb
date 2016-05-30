@@ -27,7 +27,8 @@ module Workflow
     class BaseNode
       attr_accessor :name
       attr_accessor :auto_signal
-      attr_accessor :action
+      attr_accessor :enter_action
+      attr_accessor :leave_action
       
       def initialize(parent, name, options)
         @parent = parent
@@ -102,8 +103,11 @@ module Workflow
           transition = create_or_get_transition node.name, $1.to_sym
           transition.condition = value
           #puts "  condition: #{value}"
-        elsif key.to_s == "action"
-          node.action = value
+        elsif key.to_s == "enter_action"
+          node.enter_action = value
+          #puts "  action: #{value}"
+        elsif key.to_s == "leave_action"
+          node.leave_action = value
           #puts "  action: #{value}"
         end
       end
@@ -154,13 +158,20 @@ module Workflow
       
       def signal
         current_node = @parent.definition.nodes[self.node]
+        
+        if current_node.leave_action
+          current_node.leave_action.call(self)
+        end
+        
         transition = current_node.choose_transition(self)
         target_node = @parent.definition.nodes[transition.destination]
-        puts "transition from #{node} via #{transition.name} to #{target_node.name}"
+        #puts "transition from #{node} via #{transition.name} to #{target_node.name}"
         self.node = target_node.name
-        if target_node.action
-          target_node.action.call(self)
+        
+        if target_node.enter_action
+          target_node.enter_action.call(self)
         end
+        
         if target_node.auto_signal
           self.signal
         end
@@ -185,24 +196,27 @@ definition = Workflow.define do
                         
   node        :middle_a,  
               :default_transition => :state,
-              :action => lambda { |token|
+              :enter_action => lambda { |token|
                 puts "middle a action: #{token.variables[:command]}"
               }
               
   node        :middle_b,
               :default_transition => :state,
-              :action => lambda { |token|
+              :enter_action => lambda { |token|
                 puts "middle b action: #{token.variables[:command]}"
               }
       
   state_node  :state,
               :default_transition => :end,
-              :action => lambda { |token|
-                puts "state action: #{token.variables[:command]}"
+              :enter_action => lambda { |token|
+                puts "state enter action: #{token.variables[:command]}"
+              },
+              :leave_action => lambda { |token|
+                puts "state leave action: #{token.variables[:command]}"
               }
               
   end_node    :end,
-              :action => lambda { |token|
+              :enter_action => lambda { |token|
                 puts "end action: #{token.variables[:command]}"
               }
 end
