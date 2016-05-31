@@ -1,3 +1,5 @@
+require 'json'
+
 module Workflow
   class WorkflowDefinition
     attr_accessor :start
@@ -147,11 +149,12 @@ module Workflow
     attr_accessor :token
     
     class Token
+      attr_accessor :parent
       attr_accessor :node
       attr_accessor :variables
       
       def initialize(parent, node)
-        @parent = parent
+        self.parent = parent
         self.node = node
         self.variables = {}
       end
@@ -176,15 +179,36 @@ module Workflow
           self.signal
         end
       end
+      
+      def marshal_dump
+        [@node, @variables]
+      end
+
+      def marshal_load array
+        @node, @variables = array
+      end
+    end
+    
+    def initialize(definition)
+      self.definition = definition
+      self.token = Token.new(self, definition.start)
+    end
+    
+    def manual_initialize(definition)
+      self.definition = definition
+      self.token.parent = self
     end
     
     def done?
       self.token.node == self.definition.end
     end
     
-    def initialize(definition)
-      self.definition = definition
-      self.token = Token.new(self, definition.start)
+    def marshal_dump
+      @token
+    end
+
+    def marshal_load value
+      @token = value
     end
   end
 end
@@ -228,4 +252,37 @@ while not instance.done?
   puts "send signal"  
   instance.token.signal
   instance.token.variables[:command] = :foo
+  
+  dump = Marshal.dump(instance)
+  instance = Marshal.load(dump)
+  instance.manual_initialize definition
 end
+
+def http_get(response_token)
+  puts "enter"
+end
+
+definition = Workflow.define do 
+  start_node  :start,   
+              :default_transition => :state
+                        
+  state_node  :state,
+              :default_transition => :end,
+              :enter_action => lambda { |token|
+                http_get token
+              },
+              :leave_action => lambda { |token|
+                puts "leave"
+              }
+              
+  end_node    :end
+end
+
+instance = definition.create
+instance.token.signal
+
+dump = Marshal.dump(instance)
+instance = Marshal.load(dump)
+instance.manual_initialize definition
+
+instance.token.signal
