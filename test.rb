@@ -38,14 +38,22 @@ module Workflow
         self.auto_signal = true
       end
       
-      def choose_transition(token)
+      def choose_transitions(token)
+        transition_tokens = []
         @parent.transitions.each do |transition|
           next unless transition.source == self.name
           if transition.eval_condition(token)
-            return transition
+            transition_token = transition_token(token)
+            if transition_token
+              transition_tokens << [transition, transition_token]
+            end
           end
         end
-        nil
+        transition_tokens
+      end
+      
+      def transition_token(token)
+        token
       end
     end
     
@@ -68,6 +76,26 @@ module Workflow
         super parent, name, options
         self.auto_signal = false
         #puts "new state node: #{name}"
+      end
+    end
+    
+    class ForkNode < BaseNode
+      def initialize(parent, name, options)
+        super parent, name, options
+      end
+      
+      def transition_token(token)
+        token.create_child
+      end
+    end
+    
+    class JoinNode < BaseNode
+      def initialize(parent, name, options)
+        super parent, name, options
+      end
+      
+      def transition_token(token)
+        token.consume_child
       end
     end
     
@@ -128,6 +156,14 @@ module Workflow
       add_node StateNode.new(self, name, options), options
     end
     
+    def fork_node(name, options = {})
+      add_node ForkNode.new(self, name, options), options
+    end
+    
+    def join_node(name, options = {})
+      add_node JoinNode.new(self, name, options), options
+    end
+    
     def end_node(name, options = {})
       self.end = name
       add_node EndNode.new(self, name, options), options
@@ -152,40 +188,67 @@ module Workflow
       attr_accessor :parent
       attr_accessor :node
       attr_accessor :variables
+      attr_accessor :root
+      attr_accessor :childs
       
       def initialize(parent, node)
         self.parent = parent
         self.node = node
         self.variables = {}
+        self.childs = []
+      end
+      
+      def create_child
+        child = Token.new(self.parent, self.node)
+        child.root = self
+        self.childs << child
+        child
+      end
+      
+      def consume_child
+        self.root.childs.delete self
+        if self.root.childs.empty?
+          self.root
+        else
+          nil
+        end
       end
       
       def signal
-        current_node = @parent.definition.nodes[self.node]
+        if self.childs.empty?
+          current_node = @parent.definition.nodes[self.node]
         
-        if current_node.leave_action
-          current_node.leave_action.call(self)
-        end
+          transition_tokens = current_node.choose_transitions(self)
+          transition_tokens.each do |transition_token|
+            transition,token = transition_token
+          
+            if current_node.leave_action
+              current_node.leave_action.call(token)
+            end
         
-        transition = current_node.choose_transition(self)
-        target_node = @parent.definition.nodes[transition.destination]
-        #puts "transition from #{node} via #{transition.name} to #{target_node.name}"
-        self.node = target_node.name
+            target_node = @parent.definition.nodes[transition.destination]
+            #puts "transition from #{node} via #{transition.name} to #{target_node.name}"
+            token.node = target_node.name
         
-        if target_node.enter_action
-          target_node.enter_action.call(self)
-        end
+            if target_node.enter_action
+              target_node.enter_action.call(token)
+            end
         
-        if target_node.auto_signal
-          self.signal
+            if target_node.auto_signal
+              token.signal
+            end
+          end
+        else
+          self.childs[0].signal
         end
       end
       
       def marshal_dump
-        [@node, @variables]
+        [@node, @variables, @root, @childs]
       end
 
       def marshal_load array
-        @node, @variables = array
+        @node, @variables, @root, @childs = array
       end
     end
     
@@ -219,15 +282,28 @@ definition = Workflow.define do
               :b_transition => :middle_b, :b_condition => "variables[:command] == :cmd_b"
                         
   node        :middle_a,  
-              :default_transition => :state,
+              :default_transition => :fork,
               :enter_action => lambda { |token|
                 puts "middle a action: #{token.variables[:command]}"
               }
               
   node        :middle_b,
-              :default_transition => :state,
+              :default_transition => :fork,
               :enter_action => lambda { |token|
                 puts "middle b action: #{token.variables[:command]}"
+              }
+  
+  fork_node   :fork,
+              :a_transition => :join,
+              :b_transition => :join,
+              :leave_action => lambda { |token|
+                puts "leave fork: #{token.variables[:command]}"
+              }
+              
+  join_node   :join,
+              :default_transition => :state,
+              :enter_action => lambda { |token|
+                puts "enter join: #{token.variables[:command]}"
               }
       
   state_node  :state,
@@ -249,40 +325,11 @@ instance = definition.create
 instance.token.variables[:command] = :cmd_b
 
 while not instance.done?
-  puts "send signal"  
+  puts "*** send signal ***"  
   instance.token.signal
-  instance.token.variables[:command] = :foo
+  instance.token.variables[:command] = instance.token.variables[:command].to_s + "_x"
   
   dump = Marshal.dump(instance)
   instance = Marshal.load(dump)
   instance.manual_initialize definition
 end
-
-def http_get(response_token)
-  puts "enter"
-end
-
-definition = Workflow.define do 
-  start_node  :start,   
-              :default_transition => :state
-                        
-  state_node  :state,
-              :default_transition => :end,
-              :enter_action => lambda { |token|
-                http_get token
-              },
-              :leave_action => lambda { |token|
-                puts "leave"
-              }
-              
-  end_node    :end
-end
-
-instance = definition.create
-instance.token.signal
-
-dump = Marshal.dump(instance)
-instance = Marshal.load(dump)
-instance.manual_initialize definition
-
-instance.token.signal
