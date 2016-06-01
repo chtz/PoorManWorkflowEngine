@@ -1,107 +1,110 @@
 require 'securerandom'
 
 module Workflow
+  class Transition
+    attr_accessor :source
+    attr_accessor :name
+    attr_accessor :destination
+    attr_accessor :condition
+    
+    def initialize(source, name)
+      self.source = source
+      self.name = name
+    end
+    
+    def eval_condition(token)
+      return true unless self.condition
+      token.instance_eval(self.condition)
+    end
+  end
+  
+  class BaseNode
+    attr_accessor :name
+    attr_accessor :auto_signal
+    attr_accessor :enter_action
+    attr_accessor :leave_action
+    
+    def initialize(workflow, name)
+      @workflow = workflow
+      self.name = name
+    end
+    
+    def choose_transitions(token)
+      transition_tokens = []
+      @workflow.transitions.each do |transition|
+        next unless transition.source == self.name
+        if transition.eval_condition(token)
+          transition_token = transition_token(token)
+          if transition_token
+            transition_tokens << [transition, transition_token]
+          end
+        end
+      end
+      transition_tokens
+    end
+  end
+  
+  class Node < BaseNode
+    def initialize(workflow, name)
+      super workflow, name
+      self.auto_signal = true
+    end
+    
+    def transition_token(token)
+      token
+    end
+  end
+  
+  class StateNode < BaseNode
+    def initialize(workflow, name)
+      super workflow, name
+      self.auto_signal = false
+    end
+    
+    def transition_token(token)
+      token
+    end
+  end
+  
+  class ForkNode < BaseNode
+    def initialize(workflow, name)
+      super workflow, name
+      self.auto_signal = true
+    end
+    
+    def transition_token(token)
+      token.create_child
+    end
+  end
+  
+  class JoinNode < BaseNode
+    def initialize(workflow, name)
+      super workflow, name
+      self.auto_signal = true
+    end
+    
+    def transition_token(token)
+      token.consume_child
+    end
+  end
+  
+  class EndNode < BaseNode
+    def initialize(workflow, name)
+      super workflow, name
+      self.auto_signal = false
+    end
+    
+    def transition_token(token)
+      nil
+    end
+  end
+    
   class WorkflowDefinition
     attr_accessor :start
     attr_accessor :end
     attr_accessor :nodes
     attr_accessor :transitions
-    
-    class Transition
-      attr_accessor :source
-      attr_accessor :name
-      attr_accessor :destination
-      attr_accessor :condition
       
-      def initialize(parent, source, name)
-        @parent = parent
-        self.source = source
-        self.name = name
-      end
-      
-      def eval_condition(token)
-        return true unless self.condition
-        token.instance_eval(self.condition)
-      end
-    end
-    
-    class BaseNode
-      attr_accessor :name
-      attr_accessor :auto_signal
-      attr_accessor :enter_action
-      attr_accessor :leave_action
-      
-      def initialize(parent, name, options)
-        @parent = parent
-        self.name = name
-        self.auto_signal = true
-      end
-      
-      def choose_transitions(token)
-        transition_tokens = []
-        @parent.transitions.each do |transition|
-          next unless transition.source == self.name
-          if transition.eval_condition(token)
-            transition_token = transition_token(token)
-            if transition_token
-              transition_tokens << [transition, transition_token]
-            end
-          end
-        end
-        transition_tokens
-      end
-      
-      def transition_token(token)
-        token
-      end
-    end
-    
-    class StartNode < BaseNode
-      def initialize(parent, name, options)
-        super parent, name, options
-      end
-    end
-    
-    class Node < BaseNode
-      def initialize(parent, name, options)
-        super parent, name, options
-      end
-    end
-    
-    class StateNode < BaseNode
-      def initialize(parent, name, options)
-        super parent, name, options
-        self.auto_signal = false
-      end
-    end
-    
-    class ForkNode < BaseNode
-      def initialize(parent, name, options)
-        super parent, name, options
-      end
-      
-      def transition_token(token)
-        token.create_child
-      end
-    end
-    
-    class JoinNode < BaseNode
-      def initialize(parent, name, options)
-        super parent, name, options
-      end
-      
-      def transition_token(token)
-        token.consume_child
-      end
-    end
-    
-    class EndNode < BaseNode
-      def initialize(parent, name, options)
-        super parent, name, options
-        self.auto_signal = false
-      end
-    end
-    
     def initialize()
       self.nodes = {}
       self.transitions = []
@@ -110,7 +113,7 @@ module Workflow
     def create_or_get_transition(source, name)
       transition = self.transitions.select { |t| t.source == source and t.name == name }.first
       unless transition
-        transition = Transition.new(self, source, name)
+        transition = Transition.new(source, name)
         self.transitions << transition
       end
       transition
@@ -136,28 +139,28 @@ module Workflow
     
     def start_node(name, options)
       self.start = name
-      add_node StartNode.new(self, name, options), options
+      add_node Node.new(self, name), options
     end
     
     def node(name, options, &block)
-      add_node Node.new(self, name, options), options
+      add_node Node.new(self, name), options
     end
     
     def state_node(name, options = {})
-      add_node StateNode.new(self, name, options), options
+      add_node StateNode.new(self, name), options
     end
     
     def fork_node(name, options = {})
-      add_node ForkNode.new(self, name, options), options
+      add_node ForkNode.new(self, name), options
     end
     
     def join_node(name, options = {})
-      add_node JoinNode.new(self, name, options), options
+      add_node JoinNode.new(self, name), options
     end
     
     def end_node(name, options = {})
       self.end = name
-      add_node EndNode.new(self, name, options), options
+      add_node EndNode.new(self, name), options
     end
     
     def create
@@ -170,88 +173,88 @@ module Workflow
     definition.instance_eval(&block)
     definition
   end
-  
-  class Workflow 
-    attr_accessor :definition
-    attr_accessor :token
     
-    class Token
-      attr_accessor :uuid
-      attr_accessor :parent
-      attr_accessor :node
-      attr_accessor :variables
-      attr_accessor :root
-      attr_accessor :childs
-      
-      def initialize(parent, node)
-        self.uuid = SecureRandom.uuid
-        self.parent = parent
-        self.node = node
-        self.variables = {}
-        self.childs = []
-      end
-      
-      def []=(index, val)
-        @variables[index] = val
-      end
-      
-      def [](index)
-        @variables[index]
-      end
-      
-      def create_child
-        child = Token.new(self.parent, self.node)
-        child.root = self
-        self.childs << child
-        child
-      end
-      
-      def consume_child
-        self.root.childs.delete self
-        if self.root.childs.empty?
-          self.root
-        else
-          nil
-        end
-      end
-      
-      def signal
-        if self.childs.empty?
-          current_node = @parent.definition.nodes[self.node]
-        
-          transition_tokens = current_node.choose_transitions(self)
-          transition_tokens.each do |transition_token|
-            transition,token = transition_token
-          
-            if current_node.leave_action
-              current_node.leave_action.call(token)
-            end
-        
-            target_node = @parent.definition.nodes[transition.destination]
-            token.node = target_node.name
-        
-            if target_node.enter_action
-              target_node.enter_action.call(token)
-            end
-        
-            if target_node.auto_signal
-              token.signal
-            end
-          end
-        else
-          self.childs[0].signal
-        end
-      end
-      
-      def marshal_dump
-        [@uuid, @parent, @node, @variables, @root, @childs]
-      end
-
-      def marshal_load array
-        @uuid, @parent, @node, @variables, @root, @childs = array
+  class Token
+    attr_accessor :uuid
+    attr_accessor :parent
+    attr_accessor :node
+    attr_accessor :variables
+    attr_accessor :root
+    attr_accessor :childs
+    
+    def initialize(parent, node)
+      self.uuid = SecureRandom.uuid
+      self.parent = parent
+      self.node = node
+      self.variables = {}
+      self.childs = []
+    end
+    
+    def []=(index, val)
+      @variables[index] = val
+    end
+    
+    def [](index)
+      @variables[index]
+    end
+    
+    def create_child
+      child = Token.new(self.parent, self.node)
+      child.root = self
+      self.childs << child
+      child
+    end
+    
+    def consume_child
+      self.root.childs.delete self
+      if self.root.childs.empty?
+        self.root
+      else
+        nil
       end
     end
     
+    def signal
+      if self.childs.empty?
+        current_node = @parent.definition.nodes[self.node]
+      
+        transition_tokens = current_node.choose_transitions(self)
+        transition_tokens.each do |transition_token|
+          transition,token = transition_token
+        
+          if current_node.leave_action
+            current_node.leave_action.call(token)
+          end
+      
+          target_node = @parent.definition.nodes[transition.destination]
+          token.node = target_node.name
+      
+          if target_node.enter_action
+            target_node.enter_action.call(token)
+          end
+      
+          if target_node.auto_signal
+            token.signal
+          end
+        end
+      else
+        self.childs[0].signal
+      end
+    end
+    
+    def marshal_dump
+      [@uuid, @parent, @node, @variables, @root, @childs]
+    end
+
+    def marshal_load array
+      @uuid, @parent, @node, @variables, @root, @childs = array
+    end
+  end
+    
+  class Workflow 
+    attr_accessor :definition
+    attr_accessor :token
+      
     def initialize(definition)
       self.definition = definition
       self.token = Token.new(self, definition.start)
