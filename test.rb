@@ -24,14 +24,14 @@ module Workflow
     attr_accessor :enter_action
     attr_accessor :leave_action
     
-    def initialize(workflow, name)
-      @workflow = workflow
+    def initialize(definition, name)
+      @definition = workflow
       self.name = name
     end
     
     def choose_transitions(token)
       transition_tokens = []
-      @workflow.transitions.each do |transition|
+      @definition.transitions.each do |transition|
         next unless transition.source == self.name
         if transition.eval_condition(token)
           transition_token = transition_token(token)
@@ -45,8 +45,8 @@ module Workflow
   end
   
   class Node < BaseNode
-    def initialize(workflow, name)
-      super workflow, name
+    def initialize(definition, name)
+      super definition, name
       self.auto_signal = true
     end
     
@@ -56,8 +56,8 @@ module Workflow
   end
   
   class StateNode < BaseNode
-    def initialize(workflow, name)
-      super workflow, name
+    def initialize(definition, name)
+      super definition, name
       self.auto_signal = false
     end
     
@@ -67,8 +67,8 @@ module Workflow
   end
   
   class ForkNode < BaseNode
-    def initialize(workflow, name)
-      super workflow, name
+    def initialize(definition, name)
+      super definition, name
       self.auto_signal = true
     end
     
@@ -78,8 +78,8 @@ module Workflow
   end
   
   class JoinNode < BaseNode
-    def initialize(workflow, name)
-      super workflow, name
+    def initialize(definition, name)
+      super definition, name
       self.auto_signal = true
     end
     
@@ -89,8 +89,8 @@ module Workflow
   end
   
   class EndNode < BaseNode
-    def initialize(workflow, name)
-      super workflow, name
+    def initialize(definition, name)
+      super definition, name
       self.auto_signal = false
     end
     
