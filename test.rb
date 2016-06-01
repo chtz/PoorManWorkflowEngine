@@ -1,4 +1,4 @@
-require 'json'
+require 'securerandom'
 
 module Workflow
   class WorkflowDefinition
@@ -17,7 +17,6 @@ module Workflow
         @parent = parent
         self.source = source
         self.name = name
-        #puts "new transition: #{source}.#{name}"
       end
       
       def eval_condition(token)
@@ -60,14 +59,12 @@ module Workflow
     class StartNode < BaseNode
       def initialize(parent, name, options)
         super parent, name, options
-        #puts "new start node: #{name}"
       end
     end
     
     class Node < BaseNode
       def initialize(parent, name, options)
         super parent, name, options
-        #puts "new node: #{name}"
       end
     end
     
@@ -75,7 +72,6 @@ module Workflow
       def initialize(parent, name, options)
         super parent, name, options
         self.auto_signal = false
-        #puts "new state node: #{name}"
       end
     end
     
@@ -103,7 +99,6 @@ module Workflow
       def initialize(parent, name, options)
         super parent, name, options
         self.auto_signal = false
-        #puts "new end node: #{name}"
       end
     end
     
@@ -128,17 +123,13 @@ module Workflow
         if key.to_s =~ /(.+)_transition/
           transition = create_or_get_transition node.name, $1.to_sym
           transition.destination = value
-          #puts "  destination: #{value}"
         elsif key.to_s =~ /(.+)_condition/
           transition = create_or_get_transition node.name, $1.to_sym
           transition.condition = value
-          #puts "  condition: #{value}"
         elsif key.to_s == "enter_action"
           node.enter_action = value
-          #puts "  action: #{value}"
         elsif key.to_s == "leave_action"
           node.leave_action = value
-          #puts "  action: #{value}"
         end
       end
     end
@@ -185,6 +176,7 @@ module Workflow
     attr_accessor :token
     
     class Token
+      attr_accessor :uuid
       attr_accessor :parent
       attr_accessor :node
       attr_accessor :variables
@@ -192,10 +184,19 @@ module Workflow
       attr_accessor :childs
       
       def initialize(parent, node)
+        self.uuid = SecureRandom.uuid
         self.parent = parent
         self.node = node
         self.variables = {}
         self.childs = []
+      end
+      
+      def []=(index, val)
+        @variables[index] = val
+      end
+      
+      def [](index)
+        @variables[index]
       end
       
       def create_child
@@ -227,7 +228,6 @@ module Workflow
             end
         
             target_node = @parent.definition.nodes[transition.destination]
-            #puts "transition from #{node} via #{transition.name} to #{target_node.name}"
             token.node = target_node.name
         
             if target_node.enter_action
@@ -244,11 +244,11 @@ module Workflow
       end
       
       def marshal_dump
-        [@node, @variables, @root, @childs]
+        [@uuid, @parent, @node, @variables, @root, @childs]
       end
 
       def marshal_load array
-        @node, @variables, @root, @childs = array
+        @uuid, @parent, @node, @variables, @root, @childs = array
       end
     end
     
@@ -276,6 +276,8 @@ module Workflow
   end
 end
 
+## DEMO ##
+
 definition = Workflow.define do 
   start_node  :start,   
               :a_transition => :middle_a, :a_condition => "variables[:command] == :cmd_a",
@@ -284,50 +286,51 @@ definition = Workflow.define do
   node        :middle_a,  
               :default_transition => :fork,
               :enter_action => lambda { |token|
-                puts "middle a action: #{token.variables[:command]}"
+                puts "enter middle_a: #{token.uuid} #{token[:command]}"
               }
               
   node        :middle_b,
               :default_transition => :fork,
               :enter_action => lambda { |token|
-                puts "middle b action: #{token.variables[:command]}"
+                puts "enter middle_b: #{token.uuid} #{token[:command]}"
               }
   
   fork_node   :fork,
-              :a_transition => :join,
-              :b_transition => :join,
+              :a_transition => :state,
+              :b_transition => :state,
               :leave_action => lambda { |token|
-                puts "leave fork: #{token.variables[:command]}"
+                token[:rand] = (rand*1000).to_i
+                puts "leave fork: #{token.uuid} #{token.root[:command]} #{token[:rand]}"
               }
               
-  join_node   :join,
-              :default_transition => :state,
-              :enter_action => lambda { |token|
-                puts "enter join: #{token.variables[:command]}"
-              }
-      
   state_node  :state,
-              :default_transition => :end,
+              :default_transition => :join,
               :enter_action => lambda { |token|
-                puts "state enter action: #{token.variables[:command]}"
+                puts "enter state: #{token.uuid} #{token.root[:command]} #{token[:rand]}"
               },
               :leave_action => lambda { |token|
-                puts "state leave action: #{token.variables[:command]}"
+                puts "leave state: #{token.uuid} #{token.root[:command]} #{token[:rand]}"
+              }
+
+  join_node   :join,
+              :default_transition => :end,
+              :enter_action => lambda { |token|
+                puts "enter join: #{token.uuid} #{token.root[:command]} #{token[:rand]}"
               }
               
   end_node    :end,
               :enter_action => lambda { |token|
-                puts "end action: #{token.variables[:command]}"
+                puts "enter end: #{token.uuid} #{token[:command]} #{token[:rand]}"
               }
 end
 
 instance = definition.create
-instance.token.variables[:command] = :cmd_b
+instance.token[:command] = :cmd_b
 
 while not instance.done?
   puts "*** send signal ***"  
   instance.token.signal
-  instance.token.variables[:command] = instance.token.variables[:command].to_s + "_x"
+  instance.token[:command] = instance.token[:command].to_s + "_x"
   
   dump = Marshal.dump(instance)
   instance = Marshal.load(dump)
