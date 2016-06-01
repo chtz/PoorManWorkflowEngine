@@ -271,4 +271,14 @@ module Workflow
       @token = value
     end
   end
+  
+  def self.save(instance)
+    Marshal.dump(instance)
+  end
+  
+  def self.load(definition, dump)
+    instance = Marshal.load(dump)
+    instance.definition=definition
+    instance
+  end
 end

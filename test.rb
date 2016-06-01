@@ -54,7 +54,6 @@ while not instance.done?
   instance.token.signal
   instance.token[:command] = instance.token[:command].to_s + "_x"
   
-  dump = Marshal.dump(instance)
-  instance = Marshal.load(dump)
-  instance.definition=definition
+  dump = Workflow.save(instance)
+  instance = Workflow.load(definition, dump)
 end
