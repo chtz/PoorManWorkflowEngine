@@ -25,7 +25,7 @@ module Workflow
     attr_accessor :leave_action
     
     def initialize(definition, name)
-      @definition = workflow
+      @definition = definition
       self.name = name
     end
     
@@ -176,15 +176,14 @@ module Workflow
     
   class Token
     attr_accessor :uuid
-    attr_accessor :parent
     attr_accessor :node
     attr_accessor :variables
     attr_accessor :root
     attr_accessor :childs
     
-    def initialize(parent, node)
+    def initialize(workflow, node)
+      @workflow=workflow
       self.uuid = SecureRandom.uuid
-      self.parent = parent
       self.node = node
       self.variables = {}
       self.childs = []
@@ -199,7 +198,7 @@ module Workflow
     end
     
     def create_child
-      child = Token.new(self.parent, self.node)
+      child = Token.new(@workflow, self.node)
       child.root = self
       self.childs << child
       child
@@ -216,7 +215,7 @@ module Workflow
     
     def signal
       if self.childs.empty?
-        current_node = @parent.definition.nodes[self.node]
+        current_node = @workflow.definition.nodes[self.node]
       
         transition_tokens = current_node.choose_transitions(self)
         transition_tokens.each do |transition_token|
@@ -226,7 +225,7 @@ module Workflow
             current_node.leave_action.call(token)
           end
       
-          target_node = @parent.definition.nodes[transition.destination]
+          target_node = @workflow.definition.nodes[transition.destination]
           token.node = target_node.name
       
           if target_node.enter_action
@@ -243,11 +242,11 @@ module Workflow
     end
     
     def marshal_dump
-      [@uuid, @parent, @node, @variables, @root, @childs]
+      [@workflow, @uuid, @node, @variables, @root, @childs]
     end
 
     def marshal_load array
-      @uuid, @parent, @node, @variables, @root, @childs = array
+      @workflow, @uuid, @node, @variables, @root, @childs = array
     end
   end
     
@@ -258,11 +257,6 @@ module Workflow
     def initialize(definition)
       self.definition = definition
       self.token = Token.new(self, definition.start)
-    end
-    
-    def manual_initialize(definition)
-      self.definition = definition
-      self.token.parent = self
     end
     
     def done?
@@ -337,5 +331,5 @@ while not instance.done?
   
   dump = Marshal.dump(instance)
   instance = Marshal.load(dump)
-  instance.manual_initialize definition
+  instance.definition=definition
 end
