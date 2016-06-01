@@ -178,7 +178,7 @@ module Workflow
     attr_accessor :uuid
     attr_accessor :node
     attr_accessor :variables
-    attr_accessor :root
+    attr_accessor :parent
     attr_accessor :childs
     
     def initialize(workflow, node)
@@ -199,15 +199,15 @@ module Workflow
     
     def create_child
       child = Token.new(@workflow, self.node)
-      child.root = self
+      child.parent = self
       self.childs << child
       child
     end
     
     def consume_child
-      self.root.childs.delete self
-      if self.root.childs.empty?
-        self.root
+      self.parent.childs.delete self
+      if self.parent.childs.empty?
+        self.parent
       else
         nil
       end
@@ -242,11 +242,11 @@ module Workflow
     end
     
     def marshal_dump
-      [@workflow, @uuid, @node, @variables, @root, @childs]
+      [@workflow, @uuid, @node, @variables, @parent, @childs]
     end
 
     def marshal_load array
-      @workflow, @uuid, @node, @variables, @root, @childs = array
+      @workflow, @uuid, @node, @variables, @parent, @childs = array
     end
   end
     
@@ -297,22 +297,22 @@ definition = Workflow.define do
               :b_transition => :state,
               :leave_action => lambda { |token|
                 token[:rand] = (rand*1000).to_i
-                puts "leave fork: #{token.uuid} #{token.root[:command]} #{token[:rand]}"
+                puts "leave fork: #{token.uuid} #{token.parent[:command]} #{token[:rand]}"
               }
               
   state_node  :state,
               :default_transition => :join,
               :enter_action => lambda { |token|
-                puts "enter state: #{token.uuid} #{token.root[:command]} #{token[:rand]}"
+                puts "enter state: #{token.uuid} #{token.parent[:command]} #{token[:rand]}"
               },
               :leave_action => lambda { |token|
-                puts "leave state: #{token.uuid} #{token.root[:command]} #{token[:rand]}"
+                puts "leave state: #{token.uuid} #{token.parent[:command]} #{token[:rand]}"
               }
 
   join_node   :join,
               :default_transition => :end,
               :enter_action => lambda { |token|
-                puts "enter join: #{token.uuid} #{token.root[:command]} #{token[:rand]}"
+                puts "enter join: #{token.uuid} #{token.parent[:command]} #{token[:rand]}"
               }
               
   end_node    :end,
