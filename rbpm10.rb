@@ -291,6 +291,11 @@ module Workflow
     Marshal.dump(instance)
   end
   
+  def self.save_to_file(instance, file)
+    dump = self.save(instance)
+    File.open(file, 'w') { |file| file.write(dump) }
+  end
+  
   def self.load(definition, dump)
     instance = Marshal.load(dump)
     instance.definition=definition
