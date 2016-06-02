@@ -91,7 +91,7 @@ module Workflow
   class EndNode < BaseNode
     def initialize(definition, name)
       super definition, name
-      self.auto_signal = false
+      self.auto_signal = true
     end
     
     def transition_token(token)
@@ -213,16 +213,20 @@ module Workflow
       end
     end
     
+    def current_node
+      @workflow.definition.nodes[self.node]
+    end
+    
     def signal
       if self.childs.empty?
-        current_node = @workflow.definition.nodes[self.node]
+        c_node = current_node
       
-        transition_tokens = current_node.choose_transitions(self)
+        transition_tokens = c_node.choose_transitions(self)
         transition_tokens.each do |transition_token|
           transition,token = transition_token
         
-          if current_node.leave_action
-            current_node.leave_action.call(token)
+          if c_node.leave_action
+            c_node.leave_action.call(token)
           end
       
           target_node = @workflow.definition.nodes[transition.destination]
@@ -257,6 +261,17 @@ module Workflow
     def initialize(definition)
       self.definition = definition
       self.token = Token.new(self, definition.start)
+    end
+    
+    def state_tokens(token = nil)
+      token = self.token unless token
+      unless token.childs.empty?
+        token.childs.each do |child|
+          state_tokens(child) { |token| yield token unless token.current_node.auto_signal }
+        end
+      else
+        yield token unless token.current_node.auto_signal
+      end
     end
     
     def done?
