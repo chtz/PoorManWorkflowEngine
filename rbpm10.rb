@@ -1,4 +1,5 @@
 require 'securerandom'
+require 'json'
 
 module Workflow
   class Transition
@@ -189,6 +190,32 @@ module Workflow
       self.childs = []
     end
     
+    def self.from_hash(workflow, parent, h)
+      token = Token.new(workflow, h["node"].to_sym)
+      token.uuid = h["uuid"]
+      token.variables = h["variables"]
+      token.parent = parent
+      childs = []
+      h["childs"].each do |ch|
+        childs << Token.from_hash(workflow, token, ch)
+      end
+      token.childs = childs
+      token
+    end
+    
+    def to_hash
+      childs=[]
+      self.childs.each do |child|
+        childs << child.to_hash
+      end
+      h = {
+        "uuid" => self.uuid,
+        "node" => self.node,
+        "variables" => self.variables,
+        "childs" => childs
+      }
+    end
+    
     def []=(index, val)
       @variables[index] = val
     end
@@ -265,6 +292,20 @@ module Workflow
       self.token = Token.new(self, definition.start)
     end
     
+    def self.from_hash(definition, h)
+      workflow = Workflow.new(definition)
+      workflow.uuid = h["uuid"]
+      workflow.token = Token.from_hash(workflow, nil, h["token"])
+      workflow
+    end
+    
+    def to_hash
+      h = { 
+        "uuid" => self.uuid, 
+        "token" => self.token.to_hash
+      }
+    end
+    
     def state_tokens(token = nil)
       token = self.token unless token
       unless token.childs.empty?
@@ -290,7 +331,7 @@ module Workflow
   end
   
   def self.save(instance)
-    Marshal.dump(instance)
+    instance.to_hash.to_json
   end
   
   def self.save_to_file(instance, file)
@@ -299,9 +340,7 @@ module Workflow
   end
   
   def self.load(definition, dump)
-    instance = Marshal.load(dump)
-    instance.definition=definition
-    instance
+    Workflow.from_hash(definition, JSON.parse(dump))
   end
   
   def self.load_from_file(definition, file)
