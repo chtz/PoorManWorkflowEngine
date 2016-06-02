@@ -1,0 +1,21 @@
+workflow
+	in: memo
+	state:
+
+create definition
+	POST definition
+	=> definition url
+	
+create worflow instance
+	POST data
+	json
+		instance url
+		token data
+		
+signal workflow instance
+	POST data
+	json
+		instance url
+		token data
+		
+

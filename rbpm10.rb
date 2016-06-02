@@ -255,11 +255,13 @@ module Workflow
   end
     
   class Workflow 
+    attr_accessor :uuid
     attr_accessor :definition
     attr_accessor :token
       
     def initialize(definition)
       self.definition = definition
+      self.uuid = SecureRandom.uuid
       self.token = Token.new(self, definition.start)
     end
     
@@ -279,11 +281,11 @@ module Workflow
     end
     
     def marshal_dump
-      @token
+      [@uuid, @token]
     end
 
     def marshal_load value
-      @token = value
+      @uuid, @token = value
     end
   end
   
