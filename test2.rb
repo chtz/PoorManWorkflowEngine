@@ -5,17 +5,27 @@ definition = Workflow.define do
               :default_transition => :fork
                         
   fork_node   :fork,
-              :a_transition => :state,
-              :b_transition => :state
+              :a_transition => :state_a,
+              :b_transition => :state_b
               
-  state_node  :state,
+  state_node  :state_a,
               :default_transition => :join,
               :enter_action => lambda { |token|
                 token[:command] = "RANDOM"
               },
               :leave_action => lambda { |token|
-                puts "rand: #{token[:random]}"
+                puts "a rand: #{token[:random]}"
               }
+              
+  state_node  :state_b,
+              :default_transition => :join,
+              :enter_action => lambda { |token|
+                token[:command] = "RANDOM"
+              },
+              :leave_action => lambda { |token|
+                token[:random] = token[:random] * -1
+                puts "b rand: #{token[:random]}"
+              }            
 
   join_node   :join,
               :default_transition => :end,
@@ -40,7 +50,6 @@ instance.token.signal
 
 while not instance.done?
   signal_sent = false
-  #state_tokens(instance.token) do |token|
   instance.state_tokens do |token|
     if token[:command] = "RANDOM"
       token[:random] = (rand*1000).to_i
