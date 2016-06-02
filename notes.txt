@@ -1,21 +1,5 @@
-workflow
-	in: memo
-	state:
+execute workflow
 
-create definition
-	POST definition
-	=> definition url
-	
-create worflow instance
-	POST data
-	json
-		instance url
-		token data
-		
-signal workflow instance
-	POST data
-	json
-		instance url
-		token data
-		
+start new workflow
 
+post workflow definition + state => sandbox script => state
