@@ -296,4 +296,9 @@ module Workflow
     instance.definition=definition
     instance
   end
+  
+  def self.load_from_file(definition, file)
+    dump = File.read(file)
+    self.load(definition, dump)
+  end
 end

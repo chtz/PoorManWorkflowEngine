@@ -1,6 +1,4 @@
-require "./rbpm10.rb"
-
-definition = Workflow.define do 
+@definition = Workflow.define do 
   start_node  :start,   
               :default_transition => :fork
                         
@@ -42,28 +40,4 @@ definition = Workflow.define do
               }
               
   end_node    :end
-end
-
-instance = definition.create
-
-puts "*initial signal*"
-instance.token.signal
-
-while not instance.done?
-  signal_sent = false
-  instance.state_tokens do |token|
-    if token[:command] = "RANDOM"
-      token[:result] = (rand*1000).to_i
-      
-      puts "*state signal*"
-      token.signal
-      signal_sent = true
-      break
-    end
-  end
-  
-  raise unless signal_sent
-  
-  dump = Workflow.save(instance)
-  instance = Workflow.load(definition, dump)
 end
