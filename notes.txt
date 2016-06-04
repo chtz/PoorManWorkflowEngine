@@ -1,5 +1,0 @@
-execute workflow
-
-start new workflow
-
-post workflow definition + state => sandbox script => state
