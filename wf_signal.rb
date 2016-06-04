@@ -2,9 +2,7 @@ require "./rbpm10.rb"
 
 signal_input_json = ""
 while line = gets
-  unless line =~ /~~~<666~END~OF~SCRIPT~999>.*/ #FIXME
-    signal_input_json = signal_input_json + line
-  end
+  signal_input_json = signal_input_json + line
 end
 
 signal_input = JSON.parse(signal_input_json)
