@@ -1,7 +1,7 @@
 require "json"
 
 start_input_json = {
-  "definition" => File.read("test3_wf.rb"),
+  "definition" => File.read(ARGV[0]),
   "state" => {}
 }.to_json
 
