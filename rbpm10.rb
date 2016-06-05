@@ -282,26 +282,22 @@ module Workflow
   end
     
   class Workflow 
-    attr_accessor :uuid
     attr_accessor :definition
     attr_accessor :token
       
     def initialize(definition)
       self.definition = definition
-      self.uuid = SecureRandom.uuid
       self.token = Token.new(self, definition.start)
     end
     
     def self.from_hash(definition, h)
       workflow = Workflow.new(definition)
-      workflow.uuid = h["uuid"]
       workflow.token = Token.from_hash(workflow, nil, h["token"])
       workflow
     end
     
     def to_hash
       h = { 
-        "uuid" => self.uuid, 
         "token" => self.token.to_hash
       }
     end
@@ -322,11 +318,11 @@ module Workflow
     end
     
     def marshal_dump
-      [@uuid, @token]
+      @token
     end
 
     def marshal_load value
-      @uuid, @token = value
+      @token = value
     end
   end
   
