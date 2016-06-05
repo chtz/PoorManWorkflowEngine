@@ -10,6 +10,7 @@ signal_input = JSON.parse(signal_input_json)
 eval(signal_input["definition"])
 
 instance = Workflow::Workflow.from_hash(@definition, signal_input["state"])
+instance.token.variables.merge! signal_input["variables"] if signal_input["variables"]
 
 unless instance.done?
   instance.state_tokens do |token|
