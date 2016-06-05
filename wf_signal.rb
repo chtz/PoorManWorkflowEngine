@@ -10,12 +10,11 @@ signal_input = JSON.parse(signal_input_json)
 eval(signal_input["definition"])
 
 instance = Workflow::Workflow.from_hash(@definition, signal_input["state"])
-instance.token.variables.merge! signal_input["variables"] if signal_input["variables"]
 
 unless instance.done?
   instance.state_tokens do |token|
-    if token["command"] == "RANDOM"
-      token["result"] = (rand*1000).to_i
+    if !signal_input.key?("token") || signal_input["token"] == token.uuid
+      token.variables.merge! signal_input["variables"] if signal_input["variables"]
       token.signal
       signal_sent = true
       break
