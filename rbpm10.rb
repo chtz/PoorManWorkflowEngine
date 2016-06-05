@@ -271,14 +271,6 @@ module Workflow
         self.childs[0].signal
       end
     end
-    
-    def marshal_dump
-      [@workflow, @uuid, @node, @variables, @parent, @childs]
-    end
-
-    def marshal_load array
-      @workflow, @uuid, @node, @variables, @parent, @childs = array
-    end
   end
     
   class Workflow 
@@ -315,14 +307,6 @@ module Workflow
     
     def done?
       self.token.node == self.definition.end
-    end
-    
-    def marshal_dump
-      @token
-    end
-
-    def marshal_load value
-      @token = value
     end
   end
   
