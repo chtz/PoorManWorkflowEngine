@@ -14,8 +14,8 @@
 
 require 'json'
 require 'open3'
-#require 'io'
 require 'stringio'
+require 'net/http'
 
 state = JSON.parse(STDIN.read)
 
@@ -33,11 +33,15 @@ def find_first_command_token(token)
   end
 end
 
+def http_get(uri)
+  Net::HTTP.get(URI(uri))
+end
+
 command_token = find_first_command_token(state["token"])
 
 if command_token
+  command_token["variables"]["result"] = http_get(command_token["variables"]["command"][1])
   command_token["variables"].delete "command"
-  command_token["variables"]["result"] = "foo access bla. bar"
   
   Open3.popen3("./wf_signal_cloud.sh #{ARGV[0]}") do |stdin, stdout, stderr|
     stdin.puts state.to_json

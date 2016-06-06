@@ -5,24 +5,24 @@
   state_node  :state_a,
               :default_transition => :state_b,
               :enter_action => lambda { |token|
-                token["command"] = ["HTTPGET", "www.tschenett.ch"]
+                token["command"] = ["HTTPGET", "http://tschenett.ch"]
               },
               :leave_action => lambda { |token|
-                if  token["result"] =~ /access (.+)\./m
+                if  token["result"] =~ /\<title\>(.+?)\<\/title\>/m
                   token.variables.delete "result"
-                  token["extracted.access"] = $1
+                  token["tschenett.title"] = $1
                 end
               }
               
   state_node :state_b,
              :default_transition => :state_c,
              :enter_action => lambda { |token|
-               token["command"] = ["HTTPGET", "www.furthermore.ch"]
+               token["command"] = ["HTTPGET", "http://furthermore.ch"]
              },
              :leave_action => lambda { |token|
-               if  token["result"] =~ /access (.+)\./m
+               if  token["result"] =~ /\<title\>(.+?)\<\/title\>/m
                  token.variables.delete "result"
-                 token["extracted.access2"] = $1
+                 token["furthermore.title"] = $1
                end
              }
                             
@@ -30,14 +30,14 @@
              :default_transition => :state_d
               
   state_node :state_d,
-             :default_transition => :state_c,
+             :default_transition => :end,
              :enter_action => lambda { |token|
-               token["command"] = ["HTTPGET", "www.up4sure.ch"]
+               token["command"] = ["HTTPGET", "https://www.up4sure.ch"]
              },
              :leave_action => lambda { |token|
-               if  token["result"] =~ /access (.+)\./m
+               if  token["result"] =~ /\<title\>(.+?)\<\/title\>/m
                  token.variables.delete "result"
-                 token["extracted.access3"] = $1
+                 token["up4sure.title"] = $1
                end
              }
                             
