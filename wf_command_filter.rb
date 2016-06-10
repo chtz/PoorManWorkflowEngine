@@ -68,7 +68,10 @@ if command_token
     if command[0] == "http_get" 
       command_token["variables"]["result"] = http_get(apply_template(command[1], command_token["variables"]))
     elsif command[0] == "http_post"
-      command_token["variables"]["result"] = http_post(apply_template(command[1], command_token["variables"]), command[2], command[3], command[4]) 
+      command_token["variables"]["result"] = http_post(apply_template(command[1], command_token["variables"]), 
+        command[2], 
+        apply_template(command[3], command_token["variables"]), 
+        command[4]) 
     end
 
     command_token["variables"].delete "command"

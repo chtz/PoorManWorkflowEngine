@@ -50,7 +50,15 @@
   state_node :state_e,
              :default_transition => :end,
              :enter_action => lambda { |token|
-               token["command"] = ["http_post", "https://letsencrypt.up4sure.ch/up4sureSignup", "application/json", '{"externalServerId":"ff825093-c5cf-4d2b-909a-2a06861f48f8","url":"http://www.tschenett.ch","email":"alert@tschenett.ch"}', { 'x-api-key' => 'ky6bg0mCmz8Vxe6cRiMqs7jv1MLWjGEJ7olKgLRq' }]
+               token["email"] = "invalid"
+               token["command"] = ["http_post", "https://letsencrypt.up4sure.ch/up4sureSignup", 
+                  "application/json", 
+                  %Q({
+                    "externalServerId":"ff925093-c5cf-4d2b-909a-2a06861f48f8",
+                    "url":"http://www.tschenett.ch",
+                    "email":"{{email}}"
+                  }'),
+                  { 'x-api-key' => 'ky6bg0mCmz8Vxe6cRiMqs7jv1MLWjGEJ7olKgLRq' }]
              }      
                             
   end_node   :end
