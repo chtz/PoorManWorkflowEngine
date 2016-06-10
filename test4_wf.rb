@@ -3,13 +3,13 @@
               :default_transition => :fork
 
   fork_node   :fork,
-	      :a_transition => :state_a,
+          :a_transition => :state_a,
               :b_transition => :state_b
               
   state_node  :state_a,
               :default_transition => :join,
               :enter_action => lambda { |token|
-                token["command"] = ["HTTPGET", "http://tschenett.ch"]
+                token["command"] = ["http_get", "http://tschenett.ch"]
               },
               :leave_action => lambda { |token|
                 if  token["result"] =~ /\<title\>(.+?)\<\/title\>/m
@@ -20,7 +20,8 @@
   state_node :state_b,
              :default_transition => :join,
              :enter_action => lambda { |token|
-               token["command"] = ["HTTPGET", "http://furthermore.ch"]
+               token["domain"] = "furthermore.ch"
+               token["command"] = ["http_get", "http://{{domain}}"]
              },
              :leave_action => lambda { |token|
                if  token["result"] =~ /\<title\>(.+?)\<\/title\>/m
@@ -37,7 +38,7 @@
   state_node :state_d,
              :default_transition => :end,
              :enter_action => lambda { |token|
-               token["command"] = ["HTTPGET", "https://www.up4sure.ch"]
+               token["command"] = ["http_get", "https://www.up4sure.ch"]
              },
              :leave_action => lambda { |token|
                if  token["result"] =~ /\<title\>(.+?)\<\/title\>/m

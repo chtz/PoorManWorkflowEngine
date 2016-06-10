@@ -37,10 +37,20 @@ def http_get(uri)
   Net::HTTP.get(URI(uri))
 end
 
+#apply_template "Hallo {{name}}, wie geht's denn {{ref}} so?", {"name"=>"willi","ref"=>"dir"}
+def apply_template(s, h)
+  h.each do |k,v|
+    if s.index("{{#{k.to_s}}}")
+      s = s.gsub("{{#{k.to_s}}}", v.to_s)
+    end
+  end
+  s
+end
+
 command_token = find_first_command_token(state["token"])
 
-if command_token
-  command_token["variables"]["result"] = http_get(command_token["variables"]["command"][1])
+if command_token && command_token["variables"]["command"] && command_token["variables"]["command"].length > 0 && command_token["variables"]["command"][0] == "http_get"
+  command_token["variables"]["result"] = http_get(apply_template(command_token["variables"]["command"][1], command_token["variables"]))
   command_token["variables"].delete "command"
   
   Open3.popen3("./wf_signal_cloud.sh #{ARGV[0]}") do |stdin, stdout, stderr|
