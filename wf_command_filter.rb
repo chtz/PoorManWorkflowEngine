@@ -37,6 +37,19 @@ def http_get(uri)
   Net::HTTP.get(URI(uri))
 end
 
+#http_post 'https://letsencrypt.up4sure.ch/up4sureSignup', 'application/json', '{"externalServerId":"ff825094-c5cf-4d2b-909a-2a06861f48f8","url":"http://www.tschenett.ch","email":"alert@tschenett.ch"}', { 'x-api-key' => 'ky6bg0mCmz8Vxe6cRiMqs7jv1MLWjGEJ7olKgLRq' }
+def http_post(uri, content_type, data, headers = nil)
+  uri = URI(uri)
+  http = Net::HTTP.new(uri.host, uri.port)
+  http.use_ssl = uri.scheme == 'https'
+  headers = {} unless headers
+  headers['Content-Type'] = content_type
+  request = Net::HTTP::Post.new(uri.request_uri, initheader = headers)
+  request.body = data
+  response = http.request(request)
+  response.body
+end
+
 #apply_template "Hallo {{name}}, wie geht's denn {{ref}} so?", {"name"=>"willi","ref"=>"dir"}
 def apply_template(s, h)
   h.each do |k,v|
@@ -49,9 +62,17 @@ end
 
 command_token = find_first_command_token(state["token"])
 
-if command_token && command_token["variables"]["command"] && command_token["variables"]["command"].length > 0 && command_token["variables"]["command"][0] == "http_get"
-  command_token["variables"]["result"] = http_get(apply_template(command_token["variables"]["command"][1], command_token["variables"]))
-  command_token["variables"].delete "command"
+if command_token
+  command = command_token["variables"]["command"]
+  if command && command.kind_of?(Array)
+    if command[0] == "http_get" 
+      command_token["variables"]["result"] = http_get(apply_template(command[1], command_token["variables"]))
+    elsif command[0] == "http_post"
+      command_token["variables"]["result"] = http_post(apply_template(command[1], command_token["variables"]), command[2], command[3], command[4]) 
+    end
+
+    command_token["variables"].delete "command"
+  end
   
   Open3.popen3("./wf_signal_cloud.sh #{ARGV[0]}") do |stdin, stdout, stderr|
     stdin.puts state.to_json
