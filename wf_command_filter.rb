@@ -37,7 +37,7 @@ def http_get(uri)
   Net::HTTP.get(URI(uri))
 end
 
-#http_post 'https://letsencrypt.up4sure.ch/up4sureSignup', 'application/json', '{"externalServerId":"ff825094-c5cf-4d2b-909a-2a06861f48f8","url":"http://www.tschenett.ch","email":"alert@tschenett.ch"}', { 'x-api-key' => 'ky6bg0mCmz8Vxe6cRiMqs7jv1MLWjGEJ7olKgLRq' }
+#sample: http_post 'https://letsencrypt.up4sure.ch/up4sureSignup', 'application/json', '{"externalServerId":"ff825094-c5cf-4d2b-909a-2a06861f48f8","url":"http://www.tschenett.ch","email":"alert@tschenett.ch"}', { 'x-api-key' => 'xxx' }
 def http_post(uri, content_type, data, headers = nil)
   uri = URI(uri)
   http = Net::HTTP.new(uri.host, uri.port)
@@ -50,7 +50,7 @@ def http_post(uri, content_type, data, headers = nil)
   response.body
 end
 
-#apply_template "Hallo {{name}}, wie geht's denn {{ref}} so?", {"name"=>"willi","ref"=>"dir"}
+#sample: apply_template "Hallo {{name}}, wie geht's denn {{ref}} so?", {"name"=>"willi", "ref"=>"dir"}
 def apply_template(s, h)
   h.each do |k,v|
     if s.index("{{#{k.to_s}}}")
