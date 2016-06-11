@@ -72,6 +72,9 @@ if command_token
         command[2], 
         apply_template(command[3], command_token["variables"]), 
         command[4]) 
+    elsif command[0] == "sleep"
+      puts state.to_json
+      return  
     end
 
     command_token["variables"].delete "command"
