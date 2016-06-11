@@ -33,6 +33,16 @@ def find_first_command_token(token)
   end
 end
 
+def each_command_token(token)
+  yield token if token["variables"]["command"]
+  
+  if !token["childs"].empty?
+    token["childs"].each do |child|
+      each_command_token(child) { |match| yield match }
+    end
+  end
+end
+
 def http_get(uri)
   Net::HTTP.get(URI(uri))
 end
@@ -58,6 +68,16 @@ def apply_template(s, h)
     end
   end
   s
+end
+
+each_command_token(state["token"]) do |command_token|
+  command = command_token["variables"]["command"]
+  if command && command.kind_of?(Array)
+    if command[0] == "sleep"
+      command_token["variables"]["command_"] = ["timer", Time.now.to_i + command[1].to_i]
+      command_token["variables"].delete "command"
+    end
+  end
 end
 
 command_token = find_first_command_token(state["token"])

@@ -48,7 +48,7 @@
              }
 
   state_node :state_e,
-             :default_transition => :end,
+             :default_transition => :state_f,
              :enter_action => lambda { |token|
                token["email"] = "invalid"
                token["command"] = ["http_post", "https://letsencrypt.up4sure.ch/up4sureSignup", 
@@ -60,6 +60,12 @@
                   }'),
                   { 'x-api-key' => 'ky6bg0mCmz8Vxe6cRiMqs7jv1MLWjGEJ7olKgLRq' }]
              }      
-                            
+
+  state_node :state_f,
+             :default_transition => :end,
+             :enter_action => lambda { |token|
+               token["command"] = ["sleep", "60"]
+             } 
+
   end_node   :end
 end
