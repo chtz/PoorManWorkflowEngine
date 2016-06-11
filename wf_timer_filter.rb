@@ -47,7 +47,7 @@ end
 def process_state(state)
   each_command_token(state["token"]) do |command_token|
     command = command_token["variables"]["command_"]
-    if command[0] == "timer" && command[1].to_i > Time.new.to_i 
+    if command[0] == "timer" && command[1].to_i < Time.new.to_i 
       definition_uuid = state["token"]["variables"]["definition_uuid"]
       instance_uuid = state["token"]["variables"]["instance_uuid"]
       token_uuid = command_token["uuid"]
