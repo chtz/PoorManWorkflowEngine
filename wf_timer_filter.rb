@@ -61,5 +61,9 @@ end
 
 Dir[ARGV[0]].each do |file_name|
   next if File.directory? file_name
-  process_state JSON.parse(File.read(file_name))
+  begin
+    process_state JSON.parse(File.read(file_name))
+  rescue
+    #ignore (for now)
+  end
 end
