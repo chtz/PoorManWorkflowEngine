@@ -9,3 +9,7 @@ wf_start.cloud.id
 definitionData
 instanceData
 state1.json
+wf_signal.local
+wf_signal.local.id
+wf_start.local
+wf_start.local.id
